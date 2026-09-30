@@ -217,6 +217,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <div class="note" id="note"></div>
 </div>
 <div class="card" id="bank"></div>
+<div class="card" id="cardbill" style="display:none"></div>
 <div class="tiles">
 <div class="card"><div class="k">今日の目安（1日あたり）</div><div class="v" id="perday">--</div><div class="rs" id="perdaySub"></div></div>
 <div class="card"><div class="k">月末の着地予想</div><div class="v" id="land">--</div><div class="rs" id="landSub"></div></div>
@@ -730,6 +731,7 @@ function show(json){
   $('nomoney').innerHTML=nmHTML();
   $('week').innerHTML=weekHTML();
   $('bank').innerHTML=bankHTML();
+  var cb=$('cardbill');cb.innerHTML=cardHTML();cb.style.display=cb.innerHTML?'':'none';
   $('cats').innerHTML=catHTML(D.集計);
   $('budStatus').innerHTML=budHTML();
   $('fixed').innerHTML=fixHTML(D.固定費);
@@ -831,6 +833,24 @@ function income(){
   if(!(Number(a)>0)){alert('金額をプラスの数字で入れてください');return;}
   var add=c==='共有'&&$('iadd').checked;
   call('apiIncome',[K,c,a,n,add],function(j){$('iamt').value='';$('iadd').checked=false;show(j);});
+}
+function cardHTML(){
+  var C=D&&D.カード;if(!C||!C.有効)return '';
+  var h=head('var(--orange)','¥','カードの引き落とし',esc(C.日表示));
+  h+='<div class="duo"><div><div class="k">'+(C.引落済?'引き落とし額':(C.確定?'確定額':'見込み額'))+'</div><div class="v">'+num(C.額)+'</div></div>';
+  if(!C.引落済&&C.残高後!=null)h+='<div><div class="k">引き落とし後の個人口座</div><div class="v">'+num(C.残高後)+'</div></div>';
+  h+='</div>';
+  var t=C.引落済?'引き落とし済みとして、個人口座の残高に反映しています':(C.日表示+' までは、カードで払った分を個人口座の残高から引きません。'+(C.確定?'':'金額はカードのアプリで確認して入力してください（今は先月のカード利用の合計で計算しています）。'));
+  h+='<div class="rs">'+esc(t)+'</div>';
+  h+='<button class="txtbtn" onclick="cardSave()">'+(C.確定?'引き落とし額を直す':'今月の引き落とし額を入力')+'</button>';
+  return h;
+}
+function cardSave(){
+  var C=D&&D.カード;if(!C)return;
+  inputBox(C.日表示+' のカード引き落とし額','カードのアプリで見た、引き落とし合計の金額を入れてください',C.入力額!=null?C.入力額:(C.見込||''),'number',function(v){
+    if(v===''||v==null)return;
+    call('apiCardBill',[K,v],show);
+  });
 }
 function balSave(){
   inputBox('個人口座の今の残高','銀行アプリの数字を入れてください（アプリの計算上は '+yen(D.実残高)+'）',D.実残高!=null?D.実残高:'','number',function(v){
