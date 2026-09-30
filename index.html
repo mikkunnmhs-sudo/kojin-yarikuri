@@ -183,7 +183,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <div id="busy">通信中…</div>
 
 <div id="login"><div class="loginbox">
-<div class="appico">¥</div><h2>やりくり</h2>
+<div class="appico">¥</div><h2>個人やりくり</h2>
 <div class="rs">合言葉を入れてください</div>
 <input id="pw" class="field" autocapitalize="off" autocomplete="off" placeholder="合言葉">
 <button class="primary" onclick="login()">開く</button>
@@ -192,7 +192,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 
 <div id="main">
 <header class="lt">
-<div><div class="date" id="date"></div><h1 id="ttl">やりくり</h1></div>
+<div><div class="date" id="date"></div><h1 id="ttl">個人やりくり</h1></div>
 <div class="acts"><button class="circ" onclick="load()" aria-label="読み込み直す">↻</button><button class="circ" onclick="goAdd()" aria-label="記録する">＋</button></div>
 </header>
 
@@ -232,7 +232,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <div id="aires"></div>
 </div>
 <div class="card">
-<div class="segc"><button id="segOut" class="on" onclick="seg(0)">支出（現金など）</button><button id="segIn" onclick="seg(1)">入金（利息など）</button></div>
+<div class="segc"><button id="segOut" class="on" onclick="seg(0)">支出</button><button id="segIn" onclick="seg(1)">入金</button><button id="segFix" onclick="seg(2)">固定費</button></div>
 <div id="fOut">
 <div class="list">
 <label class="row"><span class="lk">金額</span><input id="camt" class="fin" type="number" inputmode="numeric" placeholder="0"></label>
@@ -249,6 +249,19 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 </div>
 <label id="iaddw" class="chk"><input type="checkbox" id="iadd"><span>今月のやりくり費に足す<br><span class="rs">チェックなし＝口座の残高だけ増やす</span></span></label>
 <button class="primary" onclick="income()">記録する</button>
+</div>
+<div id="fFix" style="display:none">
+<div class="list">
+<label class="row"><span class="lk">項目</span><input id="fname" class="fin" placeholder="例：Netflix、家賃"></label>
+<label class="row"><span class="lk">毎月の額</span><input id="famt" class="fin" type="number" inputmode="numeric" placeholder="0"></label>
+<label class="row"><span class="lk">払い方</span><select id="fway" onchange="fixWay()"><option value="カード">カード払い</option><option value="口座振替">口座振替</option></select></label>
+<label class="row" id="fdayw" style="display:none"><span class="lk">引落日</span><input id="fday" class="fin" placeholder="1〜31 か 末"></label>
+<label class="row" id="fkeyw"><span class="lk">明細の文字</span><input id="fkey" class="fin" placeholder="例：NETFLIX（空欄なら項目名）"></label>
+<label class="row"><span class="lk">カテゴリ</span><select id="fcat"></select></label>
+<label class="row"><span class="lk">何か月ごと</span><select id="fint"><option value="1">毎月</option><option value="2">2か月ごと</option><option value="3">3か月ごと</option><option value="6">半年ごと</option><option value="12">1年ごと</option></select></label>
+</div>
+<div class="rs" style="margin:6px 4px">カード払い：通知メールの店名に「明細の文字」が入っていたら、自動で固定費として記録します。<br>口座振替：引落日に自動で記録します。</div>
+<button class="primary" onclick="fixAdd()">固定費を登録する</button>
 </div>
 </div>
 <div class="sec">今月の取引</div>
@@ -711,6 +724,7 @@ function show(json){
   $('goals').innerHTML=goalsHTML();
   $('text').textContent=D.文||'';
   $('ccat').innerHTML=opts(D.cats,'食費');
+  if($('fcat')&&!$('fcat').value)$('fcat').innerHTML=opts(D.cats,D.cats.indexOf('固定費')>=0?'固定費':D.cats[0]);
   var sp=[],rows=[],spSum=0;
   (D.取引||[]).forEach(function(t,i){
     if(t.区分==='特別費'){sp.push(txRow(t,i));spSum+=Number(t.金額)||0;}else rows.push(txRow(t,i));
@@ -723,8 +737,8 @@ function show(json){
 function openSheet(id){$('scrim').classList.add('on');$(id).classList.add('on');}
 function closeSheet(){$('scrim').classList.remove('on');$('txSheet').classList.remove('on');}
 function seg(m){
-  $('segOut').className=m===0?'on':'';$('segIn').className=m===1?'on':'';
-  $('fOut').style.display=m===0?'':'none';$('fIn').style.display=m===1?'':'none';
+  $('segOut').className=m===0?'on':'';$('segIn').className=m===1?'on':'';$('segFix').className=m===2?'on':'';
+  $('fOut').style.display=m===0?'':'none';$('fIn').style.display=m===1?'':'none';$('fFix').style.display=m===2?'':'none';
   accChg();
 }
 function openTx(i){
@@ -781,6 +795,14 @@ function nm(i){
 }
 function hoten(i){var t=D.取引[i];yesNo(yen(t.金額)+' を貯蓄口座から個人口座へ移しましたか？','貯蓄口座の残高からも引きます',function(ok){if(ok)upd(i,{補填:1});},'移した','まだ');}
 function amt(i){inputBox('正しい金額','',D.取引[i].金額,'number',function(v){if(v!==''&&v!=null)upd(i,{金額:v});});}
+function fixWay(){var k=$('fway').value==='口座振替';$('fdayw').style.display=k?'':'none';$('fkeyw').style.display=k?'none':'';}
+function fixAdd(){
+  var o={項目:$('fname').value.trim(),見込み:$('famt').value,払い方:$('fway').value,引落日:$('fday').value.trim(),照合キーワード:$('fkey').value.trim(),カテゴリ:$('fcat').value,間隔:$('fint').value};
+  if(!o.項目){alert('項目を入れてください');return;}
+  if(!(Number(o.見込み)>0)){alert('毎月の額を入れてください');return;}
+  if(o.払い方==='口座振替'&&!o.引落日){alert('引落日を入れてください（1〜31 か 末）');return;}
+  call('apiFixAdd',[K,o],function(j){['fname','famt','fday','fkey'].forEach(function(x){$(x).value='';});$('fint').value='1';show(j);alert('「'+o.項目+'」を固定費に登録しました');});
+}
 function cash(){
   var a=$('camt').value,n=$('cname').value;
   if(!a||!n){alert('金額とお店を入れてください');return;}
