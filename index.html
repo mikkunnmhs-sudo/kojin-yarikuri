@@ -20,6 +20,11 @@
 #scrim.on{background:rgba(0,0,0,.35)!important}
 html,body{background:var(--bg)!important}
 @media (display-mode:standalone){#main{padding-top:calc(max(env(safe-area-inset-top,0px),47px) + 14px)!important}#busy{top:auto!important}}
+/* 相談タブなど中身が短いとき、下端がずれて余白が出るのを防ぐ */
+html{height:100%}
+body{min-height:100%;min-height:-webkit-fill-available}
+#main{min-height:100vh;min-height:100dvh}
+.tabbar{bottom:0!important;-webkit-transform:translateZ(0);transform:translateZ(0)}
 #topmask{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),0px);background:var(--bg);z-index:50;pointer-events:none}
 
 </style>
@@ -377,6 +382,7 @@ function tab(t){
   ['home','rec','ask','rep'].forEach(function(x){$('tab-'+x).style.display=x===t?'':'none';$('tb-'+x).className=x===t?'on':'';});
   $('ttl').textContent={home:'個人やりくり',rec:'記録',ask:'相談',rep:'レポート'}[t];
   window.scrollTo(0,0);
+  requestAnimationFrame(function(){window.scrollTo(0,0);});
   if(t==='rep'&&REPS===null&&K)loadReps();
 }
 function goAdd(){tab('rec');seg(0);setTimeout(function(){$('camt').focus();},150);}
@@ -475,7 +481,8 @@ function bankHTML(){
     }).join('<br>')+'</div>';
   }
   more+='<button class="txtbtn" onclick="setSave()">貯蓄口座の残高を入力</button>';
-  return h+'<details style="margin-top:8px"><summary class="rs" style="font-weight:600">くわしく</summary>'+more+'</details>';
+  var btns='<div style="display:flex;gap:18px;margin-top:6px;flex-wrap:wrap"><button class="txtbtn" onclick="balSave()">個人口座の残高を入力</button><button class="txtbtn" onclick="budSave()">今月の予算を入力</button></div>';
+  return h+btns+'<details style="margin-top:8px"><summary class="rs" style="font-weight:600">くわしく</summary>'+more+'</details>';
 }
 
 
@@ -824,6 +831,18 @@ function income(){
   if(!(Number(a)>0)){alert('金額をプラスの数字で入れてください');return;}
   var add=c==='共有'&&$('iadd').checked;
   call('apiIncome',[K,c,a,n,add],function(j){$('iamt').value='';$('iadd').checked=false;show(j);});
+}
+function balSave(){
+  inputBox('個人口座の今の残高','銀行アプリの数字を入れてください（アプリの計算上は '+yen(D.実残高)+'）',D.実残高!=null?D.実残高:'','number',function(v){
+    if(v===''||v==null)return;
+    call('apiBalance',[K,v],show);
+  });
+}
+function budSave(){
+  inputBox('今月の予算（個人口座に入れた額）','月によって違う金額を入れてください。先月までの残りは自動で引き継がれます',D.予算!=null?D.予算:'','number',function(v){
+    if(v===''||v==null)return;
+    call('apiBudgetMonth',[K,v],show);
+  });
 }
 function setSave(){
   var S=D&&D.貯蓄;
