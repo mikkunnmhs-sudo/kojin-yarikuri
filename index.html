@@ -481,7 +481,7 @@ function bankHTML(){
     }).join('<br>')+'</div>';
   }
   more+='<button class="txtbtn" onclick="setSave()">貯蓄口座の残高を入力</button>';
-  var btns='<div style="display:flex;gap:18px;margin-top:6px;flex-wrap:wrap"><button class="txtbtn" onclick="balSave()">個人口座の残高を入力</button><button class="txtbtn" onclick="budSave()">今月の予算を入力</button></div>';
+  var btns='<div style="display:flex;gap:18px;margin-top:6px;flex-wrap:wrap"><button class="txtbtn" onclick="balSave()">個人口座の残高を入力</button><button class="txtbtn" onclick="budSave()">今月の予算を入力</button><button class="txtbtn" onclick="trSave()">貯蓄口座から個人口座へ移す</button></div>';
   return h+btns+'<details style="margin-top:8px"><summary class="rs" style="font-weight:600">くわしく</summary>'+more+'</details>';
 }
 
@@ -842,6 +842,14 @@ function budSave(){
   inputBox('今月の予算（個人口座に入れた額）','月によって違う金額を入れてください。先月までの残りは自動で引き継がれます',D.予算!=null?D.予算:'','number',function(v){
     if(v===''||v==null)return;
     call('apiBudgetMonth',[K,v],show);
+  });
+}
+function trSave(){
+  var S=D&&D.貯蓄;
+  inputBox('貯蓄口座から個人口座へ移す金額','貯蓄口座の残高が減り、個人口座の残高が増えます（今月のやりくり費は変わりません）'+(S&&S.残高!=null?'。貯蓄口座は今 '+yen(S.残高):''),'','number',function(v){
+    if(v===''||v==null)return;
+    if(!(Number(v)>0)){alert('金額をプラスの数字で入れてください');return;}
+    call('apiTransfer',[K,v],show);
   });
 }
 function setSave(){
