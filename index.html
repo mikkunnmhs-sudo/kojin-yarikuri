@@ -485,18 +485,20 @@ function catHTML(A){
   h+='<div class="v">'+num(y.今月)+'</div><div class="rs">やりくり合計'+(A.先月あり?'　先月の同じ時期（1〜'+A.今日+'日）より <span class="'+(y.差>0?'up':'down')+'">'+sgn(y.差)+yen(Math.abs(y.差))+'</span>':'')+'</div>';
   var mx=Math.max.apply(null,A.カテゴリ.map(function(c){return c.今月;}).concat([1]));
   h+='<div style="margin-top:10px">';
-  A.カテゴリ.forEach(function(c,i){
-    var m=M[c.名前],over=m&&c.今月>m;
+  var 名=[],見=A.カテゴリ||[],色=D.色||{};
+  (D.cats||[]).forEach(function(n){if(n!=='固定費'&&名.indexOf(n)<0)名.push(n);});
+  見.forEach(function(c){if(名.indexOf(c.名前)<0)名.push(c.名前);});
+  Object.keys(M).forEach(function(n){if(名.indexOf(n)<0)名.push(n);});
+  名.forEach(function(n,i){
+    var c=見.filter(function(x){return x.名前===n;})[0]||{名前:n,今月:0,差:0,率:null};
+    var m=M[n],over=m&&c.今月>m,空=!(c.今月>0);
     var w=m?Math.min(100,c.今月/m*100):c.今月/mx*100;
-    var d=A.先月あり?sgn(c.差)+yen(Math.abs(c.差))+(c.率!==null?'（'+(c.率>0?'+':'')+c.率+'%）':'（新しく増えた）'):'';
-    h+='<div class="crow"><div class="top"><span>'+esc(c.名前)+'</span><b'+(over?' class="up"':'')+'>'+yen(c.今月)+(m?'<span style="font-weight:400;color:var(--sub);font-size:13px"> / '+yen(m)+'</span>':'')+'</b></div>'+
-      '<div class="cbar"><i style="width:'+Math.max(2,w)+'%;background:'+(over?'var(--red)':PAL[i%PAL.length])+'"></i></div>'+
-      (m?'<div class="rs'+(over?' up':'')+'">'+(over?'目安を '+yen(c.今月-m)+' オーバー':'目安まで あと '+yen(m-c.今月))+'</div>':'')+
+    var col=over?'var(--red)':(色[n]||PAL[i%PAL.length]);
+    var d=!空&&A.先月あり?sgn(c.差)+yen(Math.abs(c.差))+(c.率!==null?'（'+(c.率>0?'+':'')+c.率+'%）':'（新しく増えた）'):'';
+    h+='<div class="crow"'+(空?' style="opacity:.38"':'')+'><div class="top"><span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:'+col+'"></i>'+esc(n)+'</span><b'+(over?' class="up"':'')+'>'+yen(c.今月)+(m?'<span style="font-weight:400;color:var(--sub);font-size:13px"> / '+yen(m)+'</span>':'')+'</b></div>'+
+      '<div class="cbar"><i style="width:'+Math.max(2,w)+'%;background:'+col+'"></i></div>'+
+      (m&&!空?'<div class="rs'+(over?' up':'')+'">'+(over?'目安を '+yen(c.今月-m)+' オーバー':'目安まで あと '+yen(m-c.今月))+'</div>':'')+
       (d?'<div class="rs '+(c.差>0?'up':'down')+'">先月比 '+d+'</div>':'')+'</div>';
-  });
-  Object.keys(M).forEach(function(n){
-    if(!A.カテゴリ.some(function(c){return c.名前===n;}))
-      h+='<div class="crow"><div class="top"><span>'+esc(n)+'</span><b>0円<span style="font-weight:400;color:var(--sub);font-size:13px"> / '+yen(M[n])+'</span></b></div><div class="cbar"><i style="width:2%;background:var(--green)"></i></div></div>';
   });
   h+='</div>';
   var n=[];
