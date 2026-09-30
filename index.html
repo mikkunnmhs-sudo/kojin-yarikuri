@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="個人やりくり">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
@@ -19,7 +19,8 @@
 #scrim{background:transparent!important}
 #scrim.on{background:rgba(0,0,0,.35)!important}
 html,body{background:var(--bg)!important}
-@media (display-mode:standalone){#main{padding-top:max(calc(env(safe-area-inset-top,0px) + 16px),64px)!important}#busy{top:auto!important}}
+@media (display-mode:standalone){#main{padding-top:calc(max(env(safe-area-inset-top,0px),47px) + 14px)!important}#busy{top:auto!important}}
+#topmask{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),0px);background:var(--bg);z-index:50;pointer-events:none}
 
 </style>
 <style>
@@ -191,6 +192,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <div class="rs">設定シートの「アプリの合言葉」の値です。一度入れれば、このスマホが覚えます。</div>
 </div></div>
 
+<div id="topmask"></div>
 <div id="main">
 <header class="lt">
 <div><div class="date" id="date"></div><h1 id="ttl">個人やりくり</h1></div>
