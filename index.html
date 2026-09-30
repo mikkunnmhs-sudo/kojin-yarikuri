@@ -731,6 +731,7 @@ function show(json){
   });
   $('special').innerHTML=head('var(--purple)','★','今月の特別費','やりくりとは別')+
     '<div class="v">'+num(spSum)+'</div><div class="rs">'+(D.特別待ち?'補填待ち '+yen(D.特別待ち):'補填待ちはありません')+'</div>'+
+    (D.特別待ち?'<button class="primary" style="margin-top:8px;background:var(--purple)" onclick="hotenAll()">補填待ちをまとめて補填済みにする</button>':'')+
     (sp.length?'<div class="list" style="margin-top:6px">'+sp.join('')+'</div>':'<div class="rs" style="margin-top:6px">今月の特別費はまだありません</div>');
   $('list').innerHTML='<div class="group">'+(rows.length?rows.join(''):'<div class="row"><span class="rs">まだ取引がありません</span></div>')+'</div>';
 }
@@ -792,6 +793,10 @@ function nm(i){
     if(!v){alert('お店の名前を入れてください');return;}
     upd(i,{メモ:v.slice(0,30),確認:1});
   });
+}
+function hotenAll(){
+  var n=0;(D.取引||[]).forEach(function(t){if(t.区分==='特別費'&&!t.補填)n++;});
+  yesNo('補填待ち '+yen(D.特別待ち)+' をまとめて補填済みにしますか？','貯蓄口座から個人口座へ移した前提で、貯蓄口座の残高からも引きます（先月分もふくみます）',function(ok){if(ok)call('apiHotenAll',[K],function(j){show(j);alert('補填済みにしました');});},'まとめて補填','やめる');
 }
 function hoten(i){var t=D.取引[i];yesNo(yen(t.金額)+' を貯蓄口座から個人口座へ移しましたか？','貯蓄口座の残高からも引きます',function(ok){if(ok)upd(i,{補填:1});},'移した','まだ');}
 function amt(i){inputBox('正しい金額','',D.取引[i].金額,'number',function(v){if(v!==''&&v!=null)upd(i,{金額:v});});}
