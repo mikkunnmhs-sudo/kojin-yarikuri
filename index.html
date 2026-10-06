@@ -249,6 +249,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <label class="row"><span class="lk">カテゴリ</span><select id="ccat"></select></label>
 </div>
 <button class="primary" onclick="cash()">記録する</button>
+<div class="rs" style="margin:6px 4px 0">ここで記録した支出（カード・財布から払った分）は、今月使えるお金からは引きますが、個人口座の残高からは引きません</div>
 </div>
 <div id="fIn" style="display:none">
 <div class="list">
@@ -347,12 +348,15 @@ function $(id){return document.getElementById(id);}
 function save(k){try{localStorage.setItem('kyk',k);}catch(x){}}
 function saved(){try{return localStorage.getItem('kyk')||'';}catch(x){return '';}}
 function busy(on){$('busy').style.display=on?'block':'none';}
-function call(fn,args,ok,ng){
+function call(fn,args,ok,ng,_n){
   busy(true);
   fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args})})
     .then(function(r){return r.json();})
     .then(function(j){busy(false);if(!j.ok){if(ng)ng();err(j.error);return;}ok(j.data);})
-    .catch(function(e){busy(false);if(ng)ng();err('通信できませんでした（'+e+'）');});
+    .catch(function(e){
+      if(!_n&&/^(apiData|apiReports|apiReport|apiItems|apiBudgetPlan|apiFixReview)$/.test(fn)){setTimeout(function(){call(fn,args,ok,ng,1);},1500);return;}
+      busy(false);if(ng)ng();err('通信できませんでした。電波のよい所でもう一度ためしてください（'+e+'）');
+    });
 }
 function askKey(msg){closeSheet();$('main').style.display='none';$('login').style.display='flex';if(msg)alert(msg);}
 function login(){K=$('pw').value.trim();if(!K)return;$('login').style.display='none';$('main').style.display='block';load();}
