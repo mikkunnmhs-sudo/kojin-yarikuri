@@ -348,13 +348,18 @@ function $(id){return document.getElementById(id);}
 function save(k){try{localStorage.setItem('kyk',k);}catch(x){}}
 function saved(){try{return localStorage.getItem('kyk')||'';}catch(x){return '';}}
 function busy(on){$('busy').style.display=on?'block':'none';}
-function call(fn,args,ok,ng,_n){
+function call(fn,args,ok,ng,_n,_rid){
+  var rid=_rid||(Date.now().toString(36)+Math.random().toString(36).slice(2,8));
   busy(true);
-  fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args})})
+  fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args,rid:rid})})
     .then(function(r){return r.json();})
-    .then(function(j){busy(false);if(!j.ok){if(ng)ng();err(j.error);return;}ok(j.data);})
-    .catch(function(e){
-      if(!_n&&/^(apiData|apiReports|apiReport|apiItems|apiBudgetPlan|apiFixReview)$/.test(fn)){setTimeout(function(){call(fn,args,ok,ng,1);},1500);return;}
+    .then(function(j){
+      busy(false);
+      if(!j.ok){if(ng)ng();err(j.error);return;}
+      try{ok(j.data);}catch(x){try{console.error(x);}catch(y){}err('画面の表示でエラーが出ました（'+((x&&x.message)||x)+'）');}
+    },function(e){
+      /* 通信に失敗したら、同じ依頼番号で1回だけ自動でやり直す（サーバー側で二重に記録しない） */
+      if(!_n){setTimeout(function(){call(fn,args,ok,ng,1,rid);},2000);return;}
       busy(false);if(ng)ng();err('通信できませんでした。電波のよい所でもう一度ためしてください（'+e+'）');
     });
 }
