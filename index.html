@@ -247,9 +247,10 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <label class="row"><span class="lk">金額</span><input id="camt" class="fin" type="number" inputmode="numeric" placeholder="0"></label>
 <label class="row"><span class="lk">お店</span><input id="cname" class="fin" placeholder="お店の名前"></label>
 <label class="row"><span class="lk">カテゴリ</span><select id="ccat"></select></label>
+<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option></select></label>
 </div>
 <button class="primary" onclick="cash()">記録する</button>
-<div class="rs" style="margin:6px 4px 0">ここで記録した支出（カード・財布から払った分）は、今月使えるお金からは引きますが、個人口座の残高からは引きません</div>
+<div class="rs" style="margin:6px 4px 0">ここで記録した支出は、今月使えるお金からは引きますが、個人口座の残高からはすぐには引きません。Oliveを選んだ分は、26日のカード代の見込みに入ります。Oliveでメール通知が来た支払いは自動で記録されるので、入力しないでください（二重になります）</div>
 </div>
 <div id="fIn" style="display:none">
 <div class="list">
@@ -367,7 +368,7 @@ function askKey(msg){closeSheet();$('main').style.display='none';$('login').styl
 function login(){K=$('pw').value.trim();if(!K)return;$('login').style.display='none';$('main').style.display='block';load();}
 function start(){
   $('date').textContent=new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'});
-  tab('home');
+  tab('home');payLoad();
   if(!K)K=saved();if(!K){askKey('');return;}load();
 }
 function load(){
@@ -710,7 +711,8 @@ function txRow(t,i){
     (t.区分==='特別費'&&!t.補填?' <span class="badge b2">補填待ち</span>':'')+'</div>';
   if(t.メモ&&t.店舗&&t.メモ!==t.店舗)h+='<div class="tiny">明細：'+esc(t.店舗)+'</div>';
   if(t.品目)h+='<div class="item">'+esc(t.品目)+'</div>';
-  h+='<div class="rs">'+esc(t.日)+'・'+esc(t.カテゴリ)+(t.区分&&t.区分!=='やりくり'&&t.区分!=='特別費'?'・'+esc(t.区分):'')+'</div>';
+  var pn=payName(t);
+  h+='<div class="rs">'+esc(t.日)+'・'+esc(t.カテゴリ)+(t.区分&&t.区分!=='やりくり'&&t.区分!=='特別費'?'・'+esc(t.区分):'')+(pn?'・'+esc(pn):'')+'</div>';
   return h+'</div><div class="amt">'+yen(t.金額)+'</div><span class="chev">›</span></div>';
 }
 function show(json){
@@ -843,10 +845,21 @@ function fixAdd(){
   if(o.払い方==='口座振替'&&!o.引落日){alert('引落日を入れてください（1〜31 か 末）');return;}
   call('apiFixAdd',[K,o],function(j){['fname','famt','fday','fkey'].forEach(function(x){$(x).value='';});$('fint').value='1';show(j);alert('「'+o.項目+'」を固定費に登録しました');});
 }
+function payNow(){var e=$('cpay');return e?e.value:'cash';}
+function paySave(){try{localStorage.setItem('kykpay',$('cpay').value);}catch(x){}}
+function payLoad(){try{var v=localStorage.getItem('kykpay');if(v&&$('cpay'))$('cpay').value=v;}catch(x){}}
+function payName(t){
+  var id=String(t.id||'');
+  if(/^OLV-/.test(id))return 'Olive';
+  if(/^AMC-/.test(id))return 'Amazonカード';
+  if(/^CASH-/.test(id))return '財布';
+  if(/^[A-Z]+-/.test(id))return '';
+  return 'Olive（自動）';
+}
 function cash(){
   var a=$('camt').value,n=$('cname').value;
   if(!a||!n){alert('金額とお店を入れてください');return;}
-  call('apiCash',[K,a,n,$('ccat').value],function(j){$('camt').value='';$('cname').value='';show(j);});
+  call('apiCash',[K,a,n,$('ccat').value,payNow()],function(j){$('camt').value='';$('cname').value='';show(j);});
 }
 function accChg(){$('iaddw').style.display=$('iacc').value==='共有'?'':'none';}
 function income(){
@@ -968,7 +981,7 @@ function receiptSave(){
   var a=$('ramt').value,n=$('rname').value.trim(),c=$('rcat').value,it=$('ritem').value.trim();
   if(!(Number(a)>0)||!n){alert('金額とお店を入れてください');return;}
   var old={};(D.取引||[]).forEach(function(t){old[t.id]=1;});
-  call('apiCash',[K,a,n,c],function(j){
+  call('apiCash',[K,a,n,c,payNow()],function(j){
     show(j);aimsg('記録しました');
     var nw=(D.取引||[]).filter(function(t){return !old[t.id]&&Number(t.金額)===Number(a);})[0];
     if(it&&nw)call('apiItems',[K,D.ym,[{id:nw.id,品目:it}]],show);
