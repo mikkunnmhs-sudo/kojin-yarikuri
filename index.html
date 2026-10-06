@@ -782,6 +782,7 @@ function openTx(i){
     '<div class="row tap" onclick="amt('+i+')"><span class="grow" style="color:var(--blue)">金額を直す</span><span class="chev">›</span></div></div>';
   if(t.未確定)h+='<button class="primary" onclick="upd('+i+',{確認:1})">この店でOK</button>';
   if(t.区分==='特別費')h+=t.補填?'<div class="scap">補填済み：'+esc(t.補填)+'</div>':'<button class="primary" style="background:var(--purple)" onclick="hoten('+i+')">貯蓄口座から補填した</button>';
+  if(String(t.id).indexOf('FIX-')!==0)h+='<button class="txtbtn" style="color:var(--red);display:block;margin:16px auto 0" onclick="delTx('+i+')">この記録を消す</button>';
   $('txBody').innerHTML=h;
   openSheet('txSheet');
 }
@@ -803,6 +804,12 @@ function dlgOpen(t,n,input,okText,cancelText,cb){
 function dlgClose(){$('dlg').classList.remove('on');DLGCB=null;}
 function inputBox(t,n,v,type,cb){dlgOpen(t,n,{value:v,type:type},'保存','キャンセル',cb);}
 function yesNo(t,n,cb,okText,noText){dlgOpen(t,n,null,okText||'はい',noText||'いいえ',cb);}
+function delTx(i){
+  var t=D.取引[i];if(!t)return;
+  yesNo('この記録を消しますか？',(t.メモ||t.店舗)+' '+yen(t.金額)+'（'+t.日+'）\n消すと元に戻せません',function(ok){
+    if(!ok)return;closeSheet();call('apiDelete',[K,D.ym,t.id],show);
+  },'消す','やめる');
+}
 function upd(i,c,m){var t=D.取引[i];call('apiUpdate',[K,D.ym,t.id,c,!!m],show);}
 function item(i){
   var t=D.取引[i];
