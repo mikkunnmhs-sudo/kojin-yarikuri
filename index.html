@@ -247,7 +247,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <label class="row"><span class="lk">金額</span><input id="camt" class="fin" type="number" inputmode="numeric" placeholder="0"></label>
 <label class="row"><span class="lk">お店</span><input id="cname" class="fin" placeholder="お店の名前"></label>
 <label class="row"><span class="lk">カテゴリ</span><select id="ccat"></select></label>
-<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option></select></label>
+<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option><option value="paypay">PayPay</option></select></label>
 </div>
 <button class="primary" onclick="cash()">記録する</button>
 <div class="rs" style="margin:6px 4px 0">ここで記録した支出は、今月使えるお金からは引きますが、個人口座の残高からはすぐには引きません。Oliveを選んだ分は、26日のカード代の見込みに入ります。Oliveでメール通知が来た支払いは自動で記録されるので、入力しないでください（二重になります）</div>
@@ -852,6 +852,7 @@ function payName(t){
   var id=String(t.id||'');
   if(/^OLV-/.test(id))return 'Olive';
   if(/^AMC-/.test(id))return 'Amazonカード';
+  if(/^PPY-/.test(id))return 'PayPay';
   if(/^CASH-/.test(id))return '財布';
   if(/^[A-Z]+-/.test(id))return '';
   return 'Olive（自動）';
