@@ -386,6 +386,25 @@ function pct(x){return Math.round((x||0)*100);}
 function sgn(n){return n>0?'▲':(n<0?'▼':'±');}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function opts(list,v){return (list||[]).map(function(x){return '<option'+(x===v?' selected':'')+'>'+esc(x)+'</option>';}).join('');}
+/* 「食費/外食」のように / で区切ったカテゴリは、大カテゴリ（食費）と小カテゴリ（外食）として扱う */
+function catSplit(n){n=String(n==null?'':n);var m=n.match(/^(.+?)\s*[\/／]\s*(.+)$/);return m?{大:m[1],小:m[2]}:{大:n,小:''};}
+function catOpts(list,v){
+  var L=(list||[]).slice();if(v&&L.indexOf(v)<0)L.push(v);
+  var G=[],by={};
+  L.forEach(function(n){var b=catSplit(n).大;if(!by[b]){by[b]=[];G.push(b);}by[b].push(n);});
+  function o(n,label){return '<option value="'+esc(n)+'"'+(n===v?' selected':'')+'>'+esc(label)+'</option>';}
+  return G.map(function(b){
+    var ns=by[b];
+    if(ns.length===1&&!catSplit(ns[0]).小)return o(ns[0],ns[0]);
+    return '<optgroup label="'+esc(b)+'">'+ns.map(function(n){var c=catSplit(n);return o(n,c.小?c.小:b+'（小分けなし）');}).join('')+'</optgroup>';
+  }).join('');
+}
+/* 支出の入力で最初に選ばれているカテゴリ。食費を小分けしていたら「食費/その他」など */
+function catDefault(){
+  var L=D.cats||[];if(L.indexOf('食費')>=0)return '食費';
+  var f=L.filter(function(n){return catSplit(n).大==='食費';});
+  return f.filter(function(n){return catSplit(n).小==='その他';})[0]||f[0]||L[0];
+}
 function head(color,icon,title,right){return '<div class="chead"><span class="ico" style="background:'+color+'">'+icon+'</span><span class="ct" style="color:'+color+'">'+title+'</span>'+(right?'<span class="cr">'+right+'</span>':'')+'</div>';}
 
 function tab(t){
@@ -503,22 +522,32 @@ function catHTML(A){
   var y=A.やりくり,M=D.目安||{};
   var h=head('var(--orange)','▦','カテゴリ別',esc(D.月)+' 1日〜今日');
   h+='<div class="v">'+num(y.今月)+'</div><div class="rs">やりくり合計'+(A.先月あり?'　先月の同じ時期（1〜'+A.今日+'日）より <span class="'+(y.差>0?'up':'down')+'">'+sgn(y.差)+yen(Math.abs(y.差))+'</span>':'')+'</div>';
-  var mx=Math.max.apply(null,A.カテゴリ.map(function(c){return c.今月;}).concat([1]));
-  h+='<div style="margin-top:10px">';
   var 名=[],見=A.カテゴリ||[],色=D.色||{};
   (D.cats||[]).forEach(function(n){if(n!=='固定費'&&名.indexOf(n)<0)名.push(n);});
   見.forEach(function(c){if(名.indexOf(c.名前)<0)名.push(c.名前);});
-  Object.keys(M).forEach(function(n){if(名.indexOf(n)<0)名.push(n);});
-  名.forEach(function(n,i){
-    var c=見.filter(function(x){return x.名前===n;})[0]||{名前:n,今月:0,差:0,率:null};
-    var m=M[n],over=m&&c.今月>m,空=!(c.今月>0);
-    var w=m?Math.min(100,c.今月/m*100):c.今月/mx*100;
-    var col=over?'var(--red)':(色[n]||PAL[i%PAL.length]);
-    var d=!空&&A.先月あり?sgn(c.差)+yen(Math.abs(c.差))+(c.率!==null?'（'+(c.率>0?'+':'')+c.率+'%）':'（新しく増えた）'):'';
-    h+='<div class="crow"'+(空?' style="opacity:.38"':'')+'><div class="top"><span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:'+col+'"></i>'+esc(n)+'</span><b'+(over?' class="up"':'')+'>'+yen(c.今月)+(m?'<span style="font-weight:400;color:var(--sub);font-size:13px"> / '+yen(m)+'</span>':'')+'</b></div>'+
-      '<div class="cbar"><i style="width:'+Math.max(2,w)+'%;background:'+col+'"></i></div>'+
-      (m&&!空?'<div class="rs'+(over?' up':'')+'">'+(over?'目安を '+yen(c.今月-m)+' オーバー':'目安まで あと '+yen(m-c.今月))+'</div>':'')+
-      (d?'<div class="rs '+(c.差>0?'up':'down')+'">先月比 '+d+'</div>':'')+'</div>';
+  Object.keys(M).forEach(function(n){if(名.indexOf(n)<0&&catSplit(n).小)名.push(n);});
+  Object.keys(M).forEach(function(n){if(名.indexOf(n)<0&&!名.some(function(x){return catSplit(x).大===n;}))名.push(n);});
+  function get(n){return 見.filter(function(x){return x.名前===n;})[0]||{名前:n,今月:0,差:0,率:null};}
+  /* 「食費/外食」「食費/コンビニ」などは「食費」にまとめ、その下に小カテゴリを並べる */
+  var G=[],by={};
+  名.forEach(function(n){var b=catSplit(n).大;if(!by[b]){by[b]=[];G.push(b);}by[b].push(n);});
+  var top=G.map(function(b){
+    var ns=by[b];
+    if(ns.length===1&&ns[0]===b)return {名前:b,c:get(b),m:M[b],子:[]};
+    var t=0,d=0,mm=0;
+    ns.forEach(function(n){var c=get(n);t+=c.今月;d+=c.差;mm+=M[n]||0;});
+    var 前=t-d;
+    return {名前:b,c:{名前:b,今月:t,差:d,率:前>0?Math.round(d/前*100):null},m:M[b]||mm||0,子:ns};
+  });
+  var mx=Math.max.apply(null,top.map(function(g){return g.c.今月;}).concat([1]));
+  h+='<div style="margin-top:10px">';
+  top.forEach(function(g,i){
+    var col=色[g.名前]||PAL[i%PAL.length];
+    h+=crowHTML(g.名前,g.c,g.m,col,mx,A.先月あり,false);
+    g.子.forEach(function(n){
+      var cs=catSplit(n);
+      h+=crowHTML(cs.小||g.名前+'（小分けなし）',get(n),M[n],色[n]||col,g.c.今月||1,A.先月あり,true);
+    });
   });
   h+='</div>';
   var n=[];
@@ -528,6 +557,18 @@ function catHTML(A){
   n.push('特別費 '+yen(A.特別費)+'（やりくりには入れていません）');
   if(n.length)h+='<div class="note">'+n.map(esc).join('<br>')+'</div>';
   return h;
+}
+/* カテゴリ別の1行。sub=true は大カテゴリの下に並ぶ小カテゴリ（少し右に寄せて小さく表示） */
+function crowHTML(n,c,m,col,mx,先月あり,sub){
+  var over=m&&c.今月>m,空=!(c.今月>0);
+  var w=m?Math.min(100,c.今月/m*100):c.今月/mx*100;
+  if(over)col='var(--red)';
+  var d=!空&&先月あり?sgn(c.差)+yen(Math.abs(c.差))+(c.率!==null?'（'+(c.率>0?'+':'')+c.率+'%）':'（新しく増えた）'):'';
+  var st=(sub?'margin-left:17px;padding:6px 0;font-size:14px;':'')+(空?'opacity:.38':'');
+  return '<div class="crow"'+(st?' style="'+st+'"':'')+'><div class="top"><span><i style="display:inline-block;width:'+(sub?7:9)+'px;height:'+(sub?7:9)+'px;border-radius:50%;margin-right:6px;background:'+col+'"></i>'+esc(n)+'</span><b'+(over?' class="up"':'')+'>'+yen(c.今月)+(m?'<span style="font-weight:400;color:var(--sub);font-size:13px"> / '+yen(m)+'</span>':'')+'</b></div>'+
+    '<div class="cbar"'+(sub?' style="height:4px"':'')+'><i style="width:'+Math.max(2,w)+'%;background:'+col+'"></i></div>'+
+    (m&&!空?'<div class="rs'+(over?' up':'')+'">'+(over?'目安を '+yen(c.今月-m)+' オーバー':'目安まで あと '+yen(m-c.今月))+'</div>':'')+
+    (d?'<div class="rs '+(c.差>0?'up':'down')+'">先月比 '+d+'</div>':'')+'</div>';
 }
 function budHTML(){
   var M=D.目安||{},ks=Object.keys(M),sum=0;ks.forEach(function(c){sum+=M[c];});
@@ -753,8 +794,8 @@ function show(json){
   $('fixed').innerHTML=fixHTML(D.固定費);
   $('goals').innerHTML=goalsHTML();
   $('text').textContent=D.文||'';
-  $('ccat').innerHTML=opts(D.cats,'食費');
-  if($('fcat')&&!$('fcat').value)$('fcat').innerHTML=opts(D.cats,D.cats.indexOf('固定費')>=0?'固定費':D.cats[0]);
+  $('ccat').innerHTML=catOpts(D.cats,catDefault());
+  if($('fcat')&&!$('fcat').value)$('fcat').innerHTML=catOpts(D.cats,D.cats.indexOf('固定費')>=0?'固定費':D.cats[0]);
   var sp=[],rows=[],spSum=0;
   (D.取引||[]).forEach(function(t,i){
     if(t.区分==='特別費'){sp.push(txRow(t,i));spSum+=Number(t.金額)||0;}else rows.push(txRow(t,i));
@@ -778,7 +819,7 @@ function openTx(i){
   h+='<div class="sbig">'+num(t.金額)+'</div><div class="scap">'+esc(name)+
     (t.メモ&&t.店舗&&t.メモ!==t.店舗?'<br><span style="font-size:12px">明細：'+esc(t.店舗)+'</span>':'')+'<br>'+esc(t.日)+'</div>';
   h+='<div class="group"><div class="row tap" onclick="item('+i+')"><span class="lk">何を買った</span><span class="grow" style="text-align:right;color:'+(t.品目?'var(--text)':'var(--sub)')+'">'+esc(t.品目||'入力する')+'</span><span class="chev">›</span></div>'+
-    '<label class="row"><span class="lk">カテゴリ</span><select onchange="upd('+i+',{カテゴリ:this.value})">'+opts(D.cats,t.カテゴリ)+'</select></label>'+
+    '<label class="row"><span class="lk">カテゴリ</span><select onchange="upd('+i+',{カテゴリ:this.value})">'+catOpts(D.cats,t.カテゴリ)+'</select></label>'+
     '<label class="row"><span class="lk">区分</span><select onchange="kubun('+i+',this.value)">'+opts(D.区分,t.区分)+'</select></label></div>';
   h+='<div class="group"><div class="row tap" onclick="nm('+i+')"><span class="grow" style="color:var(--blue)">お店の名前を直す</span><span class="chev">›</span></div>'+
     '<div class="row tap" onclick="amt('+i+')"><span class="grow" style="color:var(--blue)">金額を直す</span><span class="chev">›</span></div></div>';
@@ -962,7 +1003,7 @@ function showReceipt(R){
   var h='<div class="k" style="margin-top:12px">読み取り結果（まちがいは直せます）</div><div class="list">'+
     '<label class="row"><span class="lk">金額</span><input id="ramt" class="fin" type="number" inputmode="numeric" value="'+esc(R.合計)+'"></label>'+
     '<label class="row"><span class="lk">お店</span><input id="rname" class="fin" value="'+esc(R.店舗)+'"></label>'+
-    '<label class="row"><span class="lk">カテゴリ</span><select id="rcat">'+opts(D.cats,R.カテゴリ)+'</select></label>'+
+    '<label class="row"><span class="lk">カテゴリ</span><select id="rcat">'+catOpts(D.cats,R.カテゴリ)+'</select></label>'+
     '<label class="row"><span class="lk">何を</span><input id="ritem" class="fin" value="'+esc(R.品目)+'"></label></div>';
   if(R.日付)h+='<div class="rs">レシートの日付：'+esc(R.日付)+'（現金で記録すると、今日の日付になります）</div>';
   var M=(D.取引||[]).map(function(t,i){return {t:t,i:i};}).filter(function(x){return Number(x.t.金額)===Number(R.合計)&&x.t.区分!=='調整';}).slice(0,3);
