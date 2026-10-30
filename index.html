@@ -645,8 +645,15 @@ function fixEdit(i){
       '<div class="rs" style="margin:4px 4px 0">次の1回だけ、この日に動かします。いつもどおりなら空のままにしてください</div>';
   }
   h+='<button class="primary" onclick="fixSave('+i+')">保存する</button>';
+  h+='<button class="txtbtn" style="color:var(--red);display:block;margin:16px auto 0" onclick="fixDel('+i+')">この固定費を消す</button>';
   $('txBody').innerHTML=h;openSheet('txSheet');
   fixIv();fixPay();
+}
+function fixDel(i){
+  var x=FIXL[i];if(!x)return;
+  yesNo('「'+x.項目+'」を固定費から消しますか？','もう払わないものを消します。これまでの支払いの記録は残ります',function(ok){
+    if(!ok)return;closeSheet();call('apiFixDelete',[K,x.項目],show);
+  },'消す','やめる');
 }
 function fixPay(){
   var c=$('fp').value==='口座振替';
