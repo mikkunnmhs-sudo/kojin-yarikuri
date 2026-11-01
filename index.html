@@ -508,6 +508,7 @@ function weekHTML(){
 function bankHTML(){
   var S=D.貯蓄;
   var h=head('var(--blue)','¥','口座の残高');
+  if(D.予算未入力)h+='<div style="background:#fef7e0;border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-size:14px;line-height:1.5"><b style="color:#b06000">今月の予算がまだ入っていません</b><br>個人口座に入れた額を入れると「今月あと使える」が出ます<br><button class="txtbtn" onclick="budSave()" style="margin-top:4px">今月の予算を入力</button></div>';
   h+='<div class="duo"><div><div class="k">個人口座</div><div class="v">'+num(D.実残高)+'</div></div>';
   if(S&&S.残高!==null&&S.残高!==undefined){
     h+='<div><div class="k">貯蓄口座</div><div class="v">'+num(S.残高)+'</div></div></div>';
