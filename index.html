@@ -975,7 +975,7 @@ function hotenAll(){
   var n=0;(D.取引||[]).forEach(function(t){if(t.区分==='特別費'&&!t.補填)n++;});
   yesNo('補填待ち '+yen(D.特別待ち)+' をまとめて補填済みにしますか？','貯蓄口座から個人口座へ移した前提で、貯蓄口座の残高からも引きます（先月分もふくみます）',function(ok){if(ok)call('apiHotenAll',[K],function(j){show(j);alert('補填済みにしました');});},'まとめて補填','やめる');
 }
-function hoten(i){var t=D.取引[i];yesNo(yen(t.金額)+' を貯蓄口座から個人口座へ移しましたか？','貯蓄口座の残高からも引きます',function(ok){if(ok)upd(i,{補填:1});},'移した','まだ');}
+function hoten(i){var t=D.取引[i];inputBox('貯蓄口座から移した額','この特別費は '+yen(t.金額)+'。実際に貯蓄口座から個人口座へ移した額を入れてください（一部だけでもOK）。貯蓄口座から引いて、個人口座に足します',Math.abs(t.金額),'number',function(v){if(v===''||v==null)return;var n=Number(String(v).replace(/[,円\s]/g,''));if(!(n>0)){alert('金額を入れてください');return;}upd(i,{補填:1,補填額:n});});}
 function amt(i){inputBox('正しい金額','',D.取引[i].金額,'number',function(v){if(v!==''&&v!=null)upd(i,{金額:v});});}
 function fixWay(){var k=$('fway').value==='口座振替';$('fdayw').style.display=k?'':'none';$('fkeyw').style.display=k?'none':'';}
 function fixAdd(){
@@ -1018,6 +1018,16 @@ function cardHTML(){
   var t=C.引落済?'引き落とし済みとして、個人口座の残高に反映しています':(C.日表示+' までは、カードで払った分を個人口座の残高から引きません。'+(C.確定?'':'金額はカードのアプリで確認して入力してください（今は先月のカード利用の合計で計算しています）。'));
   h+='<div class="rs">'+esc(t)+'</div>';
   h+='<button class="txtbtn" onclick="cardSave()">'+(C.確定?'引き落とし額を直す':'今月の引き落とし額を入力')+'</button>';
+  var L=D.カード別||[];
+  if(L.length){
+    var sum=0;L.forEach(function(x){sum+=Number(x.額)||0;});
+    h+='<div style="margin-top:12px;border-top:1px solid var(--line,#e5e5ea);padding-top:10px"><div class="k" style="margin-bottom:4px">今月のカード別の引き落とし</div>';
+    L.forEach(function(x){
+      h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:15px"><div>'+esc(x.名前)+'<div class="rs" style="margin:0">'+(x.日?esc(x.日)+' ・ ':'')+esc(x.状態)+(x.使った&&x.使った!==x.額?' ・ 先月の記録 '+yen(x.使った):'')+'</div></div><div style="font-weight:700;white-space:nowrap">'+yen(x.額)+'</div></div>';
+    });
+    h+='<div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px dashed var(--line,#e5e5ea);font-weight:700"><div>合計</div><div>'+yen(sum)+'</div></div>';
+    h+='<div class="rs">見込みは、先月アプリに記録したそのカードの支出の合計です。請求のお知らせメールが届くと確定額に変わります</div></div>';
+  }
   return h;
 }
 function cardSave(){
