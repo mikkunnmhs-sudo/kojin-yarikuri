@@ -260,10 +260,10 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <label class="row"><span class="lk">金額</span><input id="camt" class="fin" type="number" inputmode="numeric" placeholder="0"></label>
 <label class="row"><span class="lk">お店</span><input id="cname" class="fin" placeholder="お店の名前"></label>
 <label class="row"><span class="lk">カテゴリ</span><select id="ccat"></select></label>
-<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option><option value="paypay">PayPay</option><option value="shared">夫婦共有口座へ移す</option></select></label>
+<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option><option value="paypay">PayPay</option><option value="shared_save">夫婦共有口座へ移す（貯蓄口座から）</option><option value="shared">夫婦共有口座へ移す（個人口座から）</option></select></label>
 </div>
 <button class="primary" onclick="cash()">記録する</button>
-<div class="rs" style="margin:6px 4px 0">ここで記録した支出は、今月使えるお金からは引きますが、個人口座の残高からはすぐには引きません。Oliveを選んだ分は、26日のカード代の見込みに入ります。Oliveでメール通知が来た支払いは自動で記録されるので、入力しないでください（二重になります）。「夫婦共有口座へ移す」は、個人口座の残高だけ減らします（今月使えるお金は減りません）</div>
+<div class="rs" style="margin:6px 4px 0">ここで記録した支出は、今月使えるお金からは引きますが、個人口座の残高からはすぐには引きません。Oliveを選んだ分は、26日のカード代の見込みに入ります。Oliveでメール通知が来た支払いは自動で記録されるので、入力しないでください（二重になります）。「夫婦共有口座へ移す」は、選んだ口座（貯蓄口座か個人口座）の残高だけ減らします（今月使えるお金は減りません）</div>
 </div>
 <div id="fIn" style="display:none">
 <div class="list">
@@ -986,7 +986,7 @@ function fixAdd(){
   call('apiFixAdd',[K,o],function(j){['fname','famt','fday','fkey'].forEach(function(x){$(x).value='';});$('fint').value='1';show(j);alert('「'+o.項目+'」を固定費に登録しました');});
 }
 function payNow(){var e=$('cpay');return e?e.value:'cash';}
-function paySave(){var v=$('cpay').value;$('cname').placeholder=v==='shared'?'メモ（空でもOK）':'お店の名前';if(v==='shared')return;try{localStorage.setItem('kykpay',v);}catch(x){}}
+function paySave(){var v=$('cpay').value;var sh=v.indexOf('shared')===0;$('cname').placeholder=sh?'メモ（空でもOK）':'お店の名前';if(sh)return;try{localStorage.setItem('kykpay',v);}catch(x){}}
 function payLoad(){try{var v=localStorage.getItem('kykpay');if(v&&$('cpay'))$('cpay').value=v;}catch(x){}}
 function payName(t){
   var id=String(t.id||'');
@@ -1000,9 +1000,9 @@ function payName(t){
 }
 function cash(){
   var a=$('camt').value,n=$('cname').value;
-  var sh=payNow()==='shared';
+  var sh=payNow().indexOf('shared')===0,fromSave=payNow()==='shared_save';
   if(!a||(!n&&!sh)){alert('金額とお店を入れてください');return;}
-  call('apiCash',[K,a,n,$('ccat').value,payNow()],function(j){$('camt').value='';$('cname').value='';if(sh){$('cpay').value='olive';payLoad();paySave();}show(j);if(sh)alert('夫婦共有口座へ移した分を、個人口座の残高から引きました');});
+  call('apiCash',[K,a,n,$('ccat').value,payNow()],function(j){$('camt').value='';$('cname').value='';if(sh){$('cpay').value='olive';payLoad();paySave();}show(j);if(sh)alert('夫婦共有口座へ移した分を、'+(fromSave?'貯蓄口座':'個人口座')+'の残高から引きました');});
 }
 function accChg(){$('iaddw').style.display=$('iacc').value==='共有'?'':'none';}
 function income(){
