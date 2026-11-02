@@ -260,10 +260,10 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 <label class="row"><span class="lk">金額</span><input id="camt" class="fin" type="number" inputmode="numeric" placeholder="0"></label>
 <label class="row"><span class="lk">お店</span><input id="cname" class="fin" placeholder="お店の名前"></label>
 <label class="row"><span class="lk">カテゴリ</span><select id="ccat"></select></label>
-<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option><option value="paypay">PayPay</option></select></label>
+<label class="row"><span class="lk">払い方</span><select id="cpay" onchange="paySave()"><option value="olive">Olive（三井住友カード）</option><option value="cash">財布（現金）</option><option value="amazon">Amazon Mastercard</option><option value="paypay">PayPay</option><option value="shared">夫婦共有口座へ移す</option></select></label>
 </div>
 <button class="primary" onclick="cash()">記録する</button>
-<div class="rs" style="margin:6px 4px 0">ここで記録した支出は、今月使えるお金からは引きますが、個人口座の残高からはすぐには引きません。Oliveを選んだ分は、26日のカード代の見込みに入ります。Oliveでメール通知が来た支払いは自動で記録されるので、入力しないでください（二重になります）</div>
+<div class="rs" style="margin:6px 4px 0">ここで記録した支出は、今月使えるお金からは引きますが、個人口座の残高からはすぐには引きません。Oliveを選んだ分は、26日のカード代の見込みに入ります。Oliveでメール通知が来た支払いは自動で記録されるので、入力しないでください（二重になります）。「夫婦共有口座へ移す」は、個人口座の残高だけ減らします（今月使えるお金は減りません）</div>
 </div>
 <div id="fIn" style="display:none">
 <div class="list">
@@ -986,7 +986,7 @@ function fixAdd(){
   call('apiFixAdd',[K,o],function(j){['fname','famt','fday','fkey'].forEach(function(x){$(x).value='';});$('fint').value='1';show(j);alert('「'+o.項目+'」を固定費に登録しました');});
 }
 function payNow(){var e=$('cpay');return e?e.value:'cash';}
-function paySave(){try{localStorage.setItem('kykpay',$('cpay').value);}catch(x){}}
+function paySave(){var v=$('cpay').value;$('cname').placeholder=v==='shared'?'メモ（空でもOK）':'お店の名前';if(v==='shared')return;try{localStorage.setItem('kykpay',v);}catch(x){}}
 function payLoad(){try{var v=localStorage.getItem('kykpay');if(v&&$('cpay'))$('cpay').value=v;}catch(x){}}
 function payName(t){
   var id=String(t.id||'');
@@ -994,13 +994,15 @@ function payName(t){
   if(/^AMC-/.test(id))return 'Amazonカード';
   if(/^PPY-/.test(id))return 'PayPay';
   if(/^CASH-/.test(id))return '財布';
+  if(/^SHR-/.test(id))return '夫婦共有口座へ';
   if(/^[A-Z]+-/.test(id))return '';
   return 'Olive（自動）';
 }
 function cash(){
   var a=$('camt').value,n=$('cname').value;
-  if(!a||!n){alert('金額とお店を入れてください');return;}
-  call('apiCash',[K,a,n,$('ccat').value,payNow()],function(j){$('camt').value='';$('cname').value='';show(j);});
+  var sh=payNow()==='shared';
+  if(!a||(!n&&!sh)){alert('金額とお店を入れてください');return;}
+  call('apiCash',[K,a,n,$('ccat').value,payNow()],function(j){$('camt').value='';$('cname').value='';if(sh){$('cpay').value='olive';payLoad();paySave();}show(j);if(sh)alert('夫婦共有口座へ移した分を、個人口座の残高から引きました');});
 }
 function accChg(){$('iaddw').style.display=$('iacc').value==='共有'?'':'none';}
 function income(){
@@ -1017,7 +1019,7 @@ function cardHTML(){
   h+='</div>';
   var t=C.引落済?'引き落とし済みとして、個人口座の残高に反映しています':(C.日表示+' までは、カードで払った分を個人口座の残高から引きません。'+(C.確定?'':'金額はカードのアプリで確認して入力してください（今は先月のカード利用の合計で計算しています）。'));
   h+='<div class="rs">'+esc(t)+'</div>';
-  h+='<button class="txtbtn" onclick="cardSave()">'+(C.確定?'引き落とし額を直す':'今月の引き落とし額を入力')+'</button>';
+  h+='<button class="txtbtn" onclick="cardSave()">'+'カードごとの引き落とし額・日付を入力'+'</button>';
   var L=D.カード別||[];
   if(L.length){
     var sum=0;L.forEach(function(x){sum+=Number(x.額)||0;});
@@ -1031,11 +1033,29 @@ function cardHTML(){
   return h;
 }
 function cardSave(){
-  var C=D&&D.カード;if(!C)return;
-  inputBox(C.日表示+' のカード引き落とし額','カードのアプリで見た、引き落とし合計の金額を入れてください',C.入力額!=null?C.入力額:(C.見込||''),'number',function(v){
-    if(v===''||v==null)return;
-    call('apiCardBill',[K,v],show);
+  var C=D&&D.カード;var L=D.カード別||[];
+  var by={};L.forEach(function(x){by[x.種類]=x;});
+  var rows=[['olive','三井住友カード（Olive）'],['amazon','Amazon Mastercard'],['paypay','PayPayカード']];
+  var h='<div class="shead"><button class="txtbtn" onclick="closeSheet()">キャンセル</button><b>今月のカード引き落とし</b><span class="sp"></span></div>';
+  h+='<div class="scap">カードのアプリや請求メールで見た、カードごとの引き落とし額と日付を入れてください。空にすると見込みに戻ります</div>';
+  rows.forEach(function(r){
+    var x=by[r[0]]||{};var amt,dt;
+    if(r[0]==='olive'){amt=C&&C.入力額!=null?C.入力額:'';dt=(C&&C.引落日)||'';}
+    else{amt=x.入力額!=null?x.入力額:'';dt=x.日付||'';}
+    var ph=x.額?'見込み '+yen(x.額):'0';
+    h+='<div class="k" style="margin:10px 4px 6px">'+esc(r[1])+'</div><div class="group">'+
+      '<label class="row"><span class="lk">金額</span><input id="cb_a_'+r[0]+'" class="fin" type="number" inputmode="numeric" placeholder="'+esc(ph)+'" value="'+esc(amt)+'"></label>'+
+      '<label class="row"><span class="lk">日付</span><input id="cb_d_'+r[0]+'" class="fin" type="date" value="'+esc(dt)+'"></label></div>';
   });
+  h+='<div class="rs" style="margin:4px 4px 0">入れた日になったら、個人口座の残高から引きます</div>';
+  h+='<button class="primary" onclick="cardBillsSave()">保存する</button>';
+  $('txBody').innerHTML=h;openSheet('txSheet');
+}
+function cardBillsSave(){
+  var list=['olive','amazon','paypay'].map(function(k){return {種類:k,額:$('cb_a_'+k).value,日付:$('cb_d_'+k).value};});
+  for(var i=1;i<list.length;i++){if(list[i].額&&!list[i].日付){alert('引き落とし日も入れてください');return;}}
+  closeSheet();
+  call('apiCardBills',[K,list],show);
 }
 function balSave(){
   inputBox('個人口座の今の残高','銀行アプリの数字を入れてください（アプリの計算上は '+yen(D.実残高)+'）',D.実残高!=null?D.実残高:'','number',function(v){
