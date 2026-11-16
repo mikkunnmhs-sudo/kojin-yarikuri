@@ -225,6 +225,7 @@ pre{white-space:pre-wrap;font-size:13px;margin:10px 0 0;font-family:inherit;colo
 </div>
 <div class="card" id="bank"></div>
 <div class="card" id="cardbill" style="display:none"></div>
+<div class="card" id="pocket" style="display:none"></div>
 <div class="card" id="catHome" style="display:none"></div>
 <div class="card" id="aiHome"><div class="chead"><span class="ico aigrad">✦</span><span class="ct">AIにまかせる</span></div><div class="aibtns">
 <label class="aibtn"><input type="file" accept="image/*" style="display:none" onchange="tab('rec');pickReceipt(this)"><span class="ico" style="background:var(--green)">◎</span>レシートを撮って記録</label>
@@ -469,10 +470,41 @@ function insRestore(){
   insSetHidden(insHidden().filter(function(k){return now.indexOf(k)<0;}));
   $('ins').innerHTML=insHTML();
 }
+var WEEKMODE='now';
+function setWeek(m){WEEKMODE=m;$('week').innerHTML=weekHTML();}
+function weekDays(L,lim){
+  var mx=Math.max(lim,1),h='<div style="margin-top:10px">';
+  L.forEach(function(d){if(d.合計>mx)mx=d.合計;});
+  L.forEach(function(d){
+    var over=d.合計>lim;
+    var bar='<span class="cbar"><i style="width:'+(d.合計?Math.max(3,d.合計/mx*100):0)+'%;background:'+(over?'var(--red)':'var(--teal)')+'"></i></span>';
+    var lab='<span class="d">'+esc(d.日)+'</span>';
+    var am='<span class="amt'+(over?' up':'')+'">'+yen(d.合計)+'</span>';
+    if(d.明細.length){
+      h+='<details class="wday"><summary>'+lab+bar+am+'</summary><div class="mx">'+
+        d.明細.map(function(t){return '<div class="top"><span>'+esc(t.時刻)+' '+esc(t.名前)+' <span class="tiny">'+esc(t.カテゴリ)+'</span></span><span>'+yen(t.金額)+'</span></div>';}).join('')+'</div></details>';
+    }else{
+      h+='<div class="wday"><div style="display:flex;align-items:center;gap:10px">'+lab+bar+am+'</div></div>';
+    }
+  });
+  return h+'</div>';
+}
 function weekHTML(){
   var W=D.今週;
-  var h=head('var(--teal)','7','今週のやりくり',W?esc(W.期間):'');
+  var prev=WEEKMODE==='prev'&&W&&W.先週;
+  var h=head('var(--teal)','7',prev?'先週のやりくり':'今週のやりくり',W?esc(prev?W.先週.期間:W.期間):'');
   if(!W)return h+'<div class="rs">読み込み中…</div>';
+  if(W.先週)h+='<div class="segc" style="margin:0 0 10px"><button class="'+(prev?'':'on')+'" onclick="setWeek(\'now\')">今週</button><button class="'+(prev?'on':'')+'" onclick="setWeek(\'prev\')">先週</button></div>';
+  if(prev){
+    var Q=W.先週,dq=Q.使った-W.目安週;
+    h+='<div class="v">'+num(Q.使った)+'</div>';
+    h+='<div class="rs">月曜〜日曜（7日間）・'+Q.件数+'件　1週間の目安 '+yen(W.目安週)+'</div>';
+    h+='<span class="pill bg'+(dq<=0?'順調':(dq<=W.目安1日?'注意':'ピンチ'))+'" style="margin-top:8px">'+(dq<=0?'目安より '+yen(-dq)+' 少ない':'目安より '+yen(dq)+' 多い')+'</span>';
+    h+=weekDays(Q.日別,W.目安1日);
+    var c2=W.使った-Q.使った;
+    h+='<div class="wcmp"><span>今週（今日まで）</span><b>'+yen(W.使った)+'</b><span>　→ 先週とくらべて</span><b><span class="'+(c2>0?'up':'down')+'">'+sgn(c2)+yen(Math.abs(c2))+'</span></b></div>';
+    return h+'<div class="tiny" style="margin-top:6px">赤いバー＝1日の目安 '+yen(W.目安1日)+' を超えた日。日付をタップすると明細が開きます。目安は今月のやりくり費で計算しています</div>';
+  }
   var diff=W.使った-W.目安今日まで;
   h+='<div class="v">'+num(W.使った)+'</div>';
   h+='<div class="rs">月曜〜今日（'+W.経過+'日間）・'+W.件数+'件　1週間の目安 '+yen(W.目安週)+'</div>';
@@ -888,6 +920,7 @@ function show(json){
   $('pie').innerHTML=pieHTML();
   $('bank').innerHTML=bankHTML();
   var cb=$('cardbill');cb.innerHTML=cardHTML();cb.style.display=cb.innerHTML?'':'none';
+  var pk=$('pocket');pk.innerHTML=pocketHTML();pk.style.display=pk.innerHTML?'':'none';
   $('cats').innerHTML=catHTML(D.集計);
   $('budStatus').innerHTML=budHTML();
   $('fixed').innerHTML=fixHTML(D.固定費);
@@ -1011,6 +1044,31 @@ function income(){
   if(!(Number(a)>0)){alert('金額をプラスの数字で入れてください');return;}
   var add=c==='共有'&&$('iadd').checked;
   call('apiIncome',[K,c,a,n,add],function(j){$('iamt').value='';$('iadd').checked=false;show(j);});
+}
+function pocketRow(name,sub,amt,ratio,color){
+  var w=Math.max(0,Math.min(1,ratio||0))*100;
+  return '<div style="padding:7px 0"><div style="display:flex;justify-content:space-between;gap:8px;font-size:15px"><div>'+esc(name)+'</div><div style="font-weight:700;white-space:nowrap">'+amt+'</div></div>'+
+    '<div style="background:var(--line,#e5e5ea);border-radius:4px;height:6px;margin:4px 0;overflow:hidden"><i style="display:block;height:6px;width:'+w+'%;background:'+color+'"></i></div>'+
+    '<div class="rs" style="margin:0">'+sub+'</div></div>';
+}
+function pocketHTML(){
+  var P=D&&D.ポケット,Y=D&&D.ポケット予定;
+  if(!P&&!Y)return '';
+  if(!P){
+    var mm=Number(String(Y.開始月).slice(5))+'月';
+    var tot=Y.固定費+Y.美容+Y.やりくり+Y.貯蓄;
+    var h0=head('var(--purple)','P','ポケット','<span class="pill bg注意">'+esc(mm)+'から実装予定</span>');
+    h0+='<div class="rs">'+esc(mm)+'1日から、月初めにメイン口座へ入れる '+yen(tot)+' を、次のポケットに分けて数えます（今月は今までどおりです）</div>';
+    h0+='<div class="wcmp" style="margin-top:8px"><span>やりくり（ふだんの支出）</span><b>'+yen(Y.やりくり)+'</b><span>固定費代</span><b>'+yen(Y.固定費)+'</b><span>美容院代（使わない月は持ち越し）</span><b>'+yen(Y.美容)+'</b><span>新規貯蓄（予算を超えたときはここから）</span><b>'+yen(Y.貯蓄)+'</b></div>';
+    return h0+'<div class="tiny" style="margin-top:6px">'+esc(mm)+'1日に、貯蓄口座からメイン口座へ '+yen(tot)+' を移して「貯蓄口座から個人口座へ移す」で記録してください</div>';
+  }
+  var h=head('var(--purple)','P','ポケット','今月 '+yen(P.予算));
+  h+=pocketRow('やりくり',P.やりくり.超過?'<span class="up">'+yen(P.やりくり.超過)+' オーバー（新規貯蓄から）</span>':'使った '+yen(P.やりくり.使用)+' ／ '+yen(P.やりくり.枠),yen(P.やりくり.残り),P.やりくり.残り/Math.max(1,P.やりくり.枠),'var(--teal)');
+  h+=pocketRow('固定費代',P.固定費.超過?'<span class="up">'+yen(P.固定費.超過)+' オーバー（新規貯蓄から）</span>':'今月の固定費 '+yen(P.固定費.使用)+' ／ '+yen(P.固定費.枠),yen(P.固定費.残り),P.固定費.残り/Math.max(1,P.固定費.枠),'var(--blue)');
+  h+=pocketRow('美容院代',(P.美容.使用?'今月使った '+yen(P.美容.使用)+'・':'')+'毎月 '+yen(P.美容.毎月)+' ずつたまる'+(P.美容.不足?'・<span class="up">不足 '+yen(P.美容.不足)+'（新規貯蓄から）</span>':''),yen(P.美容.残高),P.美容.残高/Math.max(1,P.美容.毎月*2),'var(--orange)');
+  h+=pocketRow('新規貯蓄','今月 '+(P.貯蓄.今月>=0?'+':'−')+yen(Math.abs(P.貯蓄.今月))+(P.貯蓄.取り崩し?'（'+yen(P.貯蓄.取り崩し)+' を足りない分に使用）':''),yen(P.貯蓄.残高),P.貯蓄.今月/Math.max(1,P.貯蓄.毎月),'var(--green)');
+  if(D.カード待ち!=null)h+='<div class="wcmp" style="margin-top:6px"><span>カード支払い待ち<div class="tiny">まだ口座から引かれていないカード代</div></span><b>'+yen(D.カード待ち)+'</b></div>';
+  return h+'<div class="tiny" style="margin-top:6px">ポケットはアプリの中だけの区分けです（口座は1つのまま）。月末に余った、やりくりと固定費代は新規貯蓄に入ります</div>';
 }
 function cardHTML(){
   var C=D&&D.カード;if(!C||!C.有効)return '';
