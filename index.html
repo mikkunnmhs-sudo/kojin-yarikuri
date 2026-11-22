@@ -359,6 +359,12 @@ var API='https://script.google.com/macros/s/AKfycbyCM4oGYOsmnPDm-dCgG1DvdAnGEyk5
 var K=new URLSearchParams(location.search).get('k')||'';
 var D=null,TAB='home',HIS=[],RING=163.4,AM=[],TD=[],REPS=null,BUD=null;
 var PAL=['var(--orange)','var(--blue)','var(--green)','var(--pink)','var(--purple)','var(--teal)','var(--red)'];
+/* スプレッドシートのセルの色を使う。白っぽい色（バーの下地と同じで見えない）・黒（色なし）は使わず、決まった色にする */
+function okCol(c){
+  var m=/^#([0-9a-f]{6})$/i.exec(String(c||''));if(!m)return '';
+  var n=parseInt(m[1],16),r=n>>16,g=(n>>8)&255,b=n&255,l=(0.299*r+0.587*g+0.114*b)/255;
+  return (l>0.85||l<0.02)?'':c;
+}
 var COL={red:'var(--red)',orange:'var(--orange)',blue:'var(--blue)',purple:'var(--purple)',green:'var(--green)'};
 function $(id){return document.getElementById(id);}
 function save(k){try{localStorage.setItem('kyk',k);}catch(x){}}
@@ -673,11 +679,11 @@ function catHTML(A){
   var mx=Math.max.apply(null,top.map(function(g){return g.c.今月;}).concat([1]));
   h+='<div style="margin-top:10px">';
   top.forEach(function(g,i){
-    var col=色[g.名前]||PAL[i%PAL.length];
+    var col=okCol(色[g.名前])||PAL[i%PAL.length];
     h+=crowHTML(g.名前,g.c,g.m,col,mx,A.先月あり,false,g.名前,true);
     g.子.forEach(function(n){
       var cs=catSplit(n);
-      h+=crowHTML(cs.小||g.名前+'（小分けなし）',get(n),M[n],色[n]||col,g.c.今月||1,A.先月あり,true,n,false);
+      h+=crowHTML(cs.小||g.名前+'（小分けなし）',get(n),M[n],okCol(色[n])||col,g.c.今月||1,A.先月あり,true,n,false);
     });
   });
   h+='</div>';
