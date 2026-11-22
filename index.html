@@ -1077,8 +1077,25 @@ function pocketRow(name,sub,amt,ratio,color){
     '<div style="background:var(--line,#e5e5ea);border-radius:4px;height:6px;margin:4px 0;overflow:hidden"><i style="display:block;height:6px;width:'+w+'%;background:'+color+'"></i></div>'+
     '<div class="rs" style="margin:0">'+sub+'</div></div>';
 }
+/* 2026-11-22 みっくんと決めた、12月からの個人の予算（10万円） */
+var PLAN_NEXT={開始月:'2026-12',合計:100000,
+  分類:[['固定費','NISA 2万・保険・Googleなど',28000],['ふだんのやりくり','医療8,000／食費8,000／その他・Amazon 5,000／交通4,000／娯楽・交際4,000／日用品3,000',32000]],
+  ポケット:[['新規貯蓄','本当に貯める分',20000],['税金','住民税（8・10・1月）。春の還付金もここへ',7000],['美容院','2か月に1回・約1万円',5000],['記念日','妻の誕生日・結婚記念日（年48,000円）',4000],['大きい買い物','コンタクト・家電など（年48,000円）',4000]]};
+function planNextHTML(){
+  var X=PLAN_NEXT,now=new Date(),ym=now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2);
+  if(ym>=X.開始月)return '';
+  var mm=Number(X.開始月.slice(5))+'月';
+  var row=function(r){return '<span>'+esc(r[0])+'<div class="tiny">'+esc(r[1])+'</div></span><b>'+yen(r[2])+'</b>';};
+  var h=head('var(--purple)','P','ポケット','<span class="pill bg注意">'+esc(mm)+'から新しい予算</span>');
+  h+='<div class="rs">'+esc(mm)+'1日から、月初めにメイン口座へ入れる '+yen(X.合計)+' を、この形で分けます（今月は今までどおりです）</div>';
+  h+='<div class="wcmp" style="margin-top:8px">'+X.分類.map(row).join('')+'</div>';
+  h+='<div class="rs" style="margin-top:8px"><b>ポケット</b>（使わない月は持ち越し）</div>';
+  h+='<div class="wcmp">'+X.ポケット.map(row).join('')+'</div>';
+  return h+'<div class="tiny" style="margin-top:6px">'+esc(mm)+'1日に、貯蓄口座からメイン口座へ '+yen(X.合計)+' を移して「貯蓄口座から個人口座へ移す」で記録してください。貯金は新規貯蓄2万＋NISA2万で毎月4万円です</div>';
+}
 function pocketHTML(){
   var P=D&&D.ポケット,Y=D&&D.ポケット予定;
+  if(!P){var pn=planNextHTML();if(pn)return pn;}
   if(!P&&!Y)return '';
   if(!P){
     var mm=Number(String(Y.開始月).slice(5))+'月';
