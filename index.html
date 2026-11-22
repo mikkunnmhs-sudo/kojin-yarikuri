@@ -1080,7 +1080,8 @@ function pocketRow(name,sub,amt,ratio,color){
 /* 2026-11-22 みっくんと決めた、12月からの個人の予算（10万円） */
 var PLAN_NEXT={開始月:'2026-12',合計:100000,
   分類:[['固定費','NISA 2万・保険・Googleなど',28000],['ふだんのやりくり','医療8,000／食費8,000／その他・Amazon 5,000／交通4,000／娯楽・交際4,000／日用品3,000',32000]],
-  ポケット:[['新規貯蓄','本当に貯める分',20000],['税金','住民税（8・10・1月）。春の還付金もここへ',7000],['美容院','2か月に1回・約1万円',5000],['記念日','妻の誕生日・結婚記念日（年48,000円）',4000],['大きい買い物','コンタクト・家電など（年48,000円）',4000]]};
+  ポケット:[['新規貯蓄','本当に貯める分',20000],['税金','住民税（8・10・1月）。春の還付金もここへ',7000],['美容院','2か月に1回・約1万円',5000],['記念日','妻の誕生日・結婚記念日（年48,000円）',4000],['大きい買い物','コンタクト・家電など（年48,000円）',4000]],
+  メモ:'支出のカテゴリを「税金」「記念日」「大型出費」「美容」にすると、やりくりではなく、そのポケットから払ったことになります'};
 function planNextHTML(){
   var X=PLAN_NEXT,now=new Date(),ym=now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2);
   if(ym>=X.開始月)return '';
@@ -1091,6 +1092,7 @@ function planNextHTML(){
   h+='<div class="wcmp" style="margin-top:8px">'+X.分類.map(row).join('')+'</div>';
   h+='<div class="rs" style="margin-top:8px"><b>ポケット</b>（使わない月は持ち越し）</div>';
   h+='<div class="wcmp">'+X.ポケット.map(row).join('')+'</div>';
+  h+='<div class="tiny" style="margin-top:6px">'+esc(X.メモ)+'</div>';
   return h+'<div class="tiny" style="margin-top:6px">'+esc(mm)+'1日に、貯蓄口座からメイン口座へ '+yen(X.合計)+' を移して「貯蓄口座から個人口座へ移す」で記録してください。貯金は新規貯蓄2万＋NISA2万で毎月4万円です</div>';
 }
 function pocketHTML(){
@@ -1110,8 +1112,12 @@ function pocketHTML(){
   h+=pocketRow('固定費代',P.固定費.超過?'<span class="up">'+yen(P.固定費.超過)+' オーバー（新規貯蓄から）</span>':'今月の固定費 '+yen(P.固定費.使用)+' ／ '+yen(P.固定費.枠),yen(P.固定費.残り),P.固定費.残り/Math.max(1,P.固定費.枠),'var(--blue)');
   h+=pocketRow('美容院代',(P.美容.使用?'今月使った '+yen(P.美容.使用)+'・':'')+'毎月 '+yen(P.美容.毎月)+' ずつたまる'+(P.美容.不足?'・<span class="up">不足 '+yen(P.美容.不足)+'（新規貯蓄から）</span>':''),yen(P.美容.残高),P.美容.残高/Math.max(1,P.美容.毎月*2),'var(--orange)');
   h+=pocketRow('新規貯蓄','今月 '+(P.貯蓄.今月>=0?'+':'−')+yen(Math.abs(P.貯蓄.今月))+(P.貯蓄.取り崩し?'（'+yen(P.貯蓄.取り崩し)+' を足りない分に使用）':''),yen(P.貯蓄.残高),P.貯蓄.今月/Math.max(1,P.貯蓄.毎月),'var(--green)');
+  var 積色=['var(--red)','var(--purple)','var(--indigo,#5856d6)','var(--teal)'];
+  (P.積立||[]).forEach(function(x,i){
+    h+=pocketRow(x.名前,(x.使用?'今月使った '+yen(x.使用)+'・':'')+'毎月 '+yen(x.毎月)+' ずつたまる'+(x.不足?'・<span class="up">不足 '+yen(x.不足)+'（新規貯蓄から）</span>':''),yen(x.残高),x.残高/Math.max(1,x.毎月*6),積色[i%積色.length]);
+  });
   if(D.カード待ち!=null)h+='<div class="wcmp" style="margin-top:6px"><span>カード支払い待ち<div class="tiny">まだ口座から引かれていないカード代</div></span><b>'+yen(D.カード待ち)+'</b></div>';
-  return h+'<div class="tiny" style="margin-top:6px">ポケットはアプリの中だけの区分けです（口座は1つのまま）。月末に余った、やりくりと固定費代は新規貯蓄に入ります</div>';
+  return h+'<div class="tiny" style="margin-top:6px">ポケットはアプリの中だけの区分けです（口座は1つのまま）。月末に余った、やりくりと固定費代は新規貯蓄に入ります。カテゴリを「税金」「記念日」「大型出費」「美容」にした支出は、そのポケットから払ったことになります</div>';
 }
 function cardHTML(){
   var C=D&&D.カード;if(!C||!C.有効)return '';
